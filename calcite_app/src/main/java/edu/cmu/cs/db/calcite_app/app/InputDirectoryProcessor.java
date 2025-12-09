@@ -1,8 +1,5 @@
 package edu.cmu.cs.db.calcite_app.app;
 
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
