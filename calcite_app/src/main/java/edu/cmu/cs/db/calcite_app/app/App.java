@@ -1,17 +1,24 @@
 package edu.cmu.cs.db.calcite_app.app;
 
 import java.io.*;
-import java.nio.file.Path;
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
-import java.sql.SQLException;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.sql.*;
 import java.util.List;
 
+import com.github.vertical_blank.sqlformatter.SqlFormatter;
+import org.apache.calcite.adapter.jdbc.JdbcSchema;
+import org.apache.calcite.jdbc.CalciteSchema;
 import org.apache.calcite.plan.RelOptUtil;
 import org.apache.calcite.rel.RelNode;
+import org.apache.calcite.schema.Schema;
+import org.apache.calcite.schema.Table;
 import org.apache.calcite.sql.SqlExplainFormat;
 import org.apache.calcite.sql.SqlExplainLevel;
+import org.apache.calcite.sql.SqlNode;
+import org.apache.calcite.sql.parser.SqlParseException;
+
+import javax.sql.DataSource;
 
 public class App
 {
@@ -48,10 +55,9 @@ public class App
         Files.writeString(outputPath.toPath(), resultSetString.toString());
     }
 
-    public static void main(String[] args) throws Exception
-    {
+    public static void main(String[] args) {
         if (args.length == 0) {
-            System.out.println("Usage: java -jar App.jar <arg1> <arg2>");
+            System.out.println("Usage: java -jar App.jar <arg1> <arg2> <arg3>");
             return;
         }
 
@@ -61,17 +67,41 @@ public class App
         System.out.println("\tArg1: " + arg1);
         String arg2 = args[1];
         System.out.println("\tArg2: " + arg2);
+        String arg3 = args[2];
+        System.out.println("\tArg3: " + arg3);
 
-        List<Path> sqlPaths = InputDirectoryProcessor.processDir(arg1);
-        for (Path sqlPath : sqlPaths) {
-            System.out.println(sqlPath);
-            BufferedReader reader = new BufferedReader(new FileReader(sqlPath.toFile()));
-            reader.lines().forEach(System.out::println);
+        CalciteSchema calciteSchema = createSchema(arg3);
+        CalciteFacade calciteFacade = new CalciteFacade(calciteSchema);
+
+        List<Path> orderedSqlPaths = InputDirectoryProcessor.processDir(arg2);
+        for (Path path : orderedSqlPaths) {
+            System.out.printf("FILE: %s\n", path);
+            String sql = "";
+            try {
+                sql = InputDirectoryProcessor.readSql(path);
+                SqlNode sqlNode = calciteFacade.validate(sql);
+            } catch (IOException e) {
+                System.out.printf("IOException: %s\n", e.getMessage());
+            } catch (SqlParseException e) {
+                System.out.printf("ParseException: %s\nSQL: %s\n", e.getMessage(), SqlFormatter.format(sql));
+            }
         }
 
         // Note: in practice, you would probably use org.apache.calcite.tools.Frameworks.
         // That package provides simple defaults that make it easier to configure Calcite.
         // But there's a lot of magic happening there; since this is an educational project,
         // we guide you towards the explicit method in the writeup.
+    }
+
+    private static CalciteSchema createSchema(String duckDbFIlePath) {
+        CalciteSchema calciteSchema = CalciteSchema.createRootSchema(false, false);
+        DataSource datasource = JdbcSchema.dataSource(
+                "jdbc:duckdb:" + duckDbFIlePath, "org.duckdb.DuckDBDriver", null, null);
+        Schema schema = JdbcSchema.create(calciteSchema.plus(), "default", datasource, null, null);
+        for (String tableName : schema.getTableNames()) {
+            Table table = schema.getTable(tableName);
+            calciteSchema.add(tableName, table);
+        }
+        return calciteSchema;
     }
 }
