@@ -18,6 +18,7 @@ dependencies {
     implementation("org.apache.calcite:calcite-core:${CALCITE_VERSION}")
     implementation("org.apache.calcite:calcite-server:${CALCITE_VERSION}")
     implementation("org.duckdb:duckdb_jdbc:1.1.3")
+    implementation("com.github.vertical-blank:sql-formatter:2.0.5")
     compileOnly("org.projectlombok:lombok:1.18.30") // Use the latest stable version
     annotationProcessor("org.projectlombok:lombok:1.18.30")
     testCompileOnly("org.projectlombok:lombok:1.18.30")
