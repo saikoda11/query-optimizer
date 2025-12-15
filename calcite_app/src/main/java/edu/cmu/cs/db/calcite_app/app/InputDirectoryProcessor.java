@@ -1,7 +1,8 @@
 package edu.cmu.cs.db.calcite_app.app;
 
-import java.io.File;
-import java.io.IOException;
+import lombok.extern.slf4j.Slf4j;
+
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -10,6 +11,7 @@ import java.util.List;
 import java.util.Scanner;
 import java.util.stream.Stream;
 
+@Slf4j
 public class InputDirectoryProcessor {
     public static List<Path> processDir(String queriesDirStr) {
         Path queriesDir = Paths.get(queriesDirStr).toAbsolutePath();
@@ -36,7 +38,8 @@ public class InputDirectoryProcessor {
                         return Path.of(parent + File.separator + fileNameWithoutExtension + ".sql");
                     })
                     .toList();
-        } catch (IOException ignored) {
+        } catch (Exception exception) {
+            log.error(exception.getMessage(), exception);
             return Collections.emptyList();
         }
     }
@@ -49,6 +52,20 @@ public class InputDirectoryProcessor {
             return scanner.nextInt();
         } catch (IOException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    public static String readSql(Path p) throws IOException {
+        if (!p.toFile().getName().endsWith(".sql")) {
+            throw new IllegalArgumentException("file is not a valid sql file");
+        }
+        try (BufferedReader bufferedReader = new BufferedReader(new FileReader(p.toFile()))) {
+            StringBuilder stringBuilder = new StringBuilder();
+            bufferedReader.lines().forEach(
+                    line ->
+                            stringBuilder.append(line.strip()).append(" ")
+            );
+            return stringBuilder.toString();
         }
     }
 }
