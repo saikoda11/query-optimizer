@@ -16,6 +16,11 @@ mkdir -p input/
 tar xzf "${WORKLOAD}" --directory input/
 
 # Feel free to add more steps here.
+cd input
+duckdb -c '.exit' qop1.db
+duckdb -c '.read data/schema.sql' qop1.db
+duckdb -c '.read data/load.sql' qop1.db
+cd ..
 
 # Build and run the Calcite app.
 cd calcite_app/
