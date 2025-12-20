@@ -11,15 +11,56 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class InputDirectoryProcessorTest {
     @Test
-    @DisplayName("Test Processor::processDir() method")
-    public void testProcess() {
-        List<Path> orderedSqlPaths = InputDirectoryProcessor.processDir("../input/queries");
-
-        checkOrder(orderedSqlPaths);
-        assertTrue(orderedSqlPaths.stream().allMatch(p -> p.toFile().getName().endsWith(".sql")));
-
-        System.out.println(orderedSqlPaths);
+    @DisplayName("Test readOrder()")
+    public void testReadOrder() {
+        AtomicInteger order = new AtomicInteger(-1);
+        assertDoesNotThrow(() -> order.set(InputDirectoryProcessor.readOrder(Path.of("../input/queries/q1.order"))));
+        assertEquals(1, order.get());
     }
+
+    @Test
+    public void testProcessDirThrowsWhenDirDoesNotExist() {
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> InputDirectoryProcessor.processDir("../input/non-existent-dir")
+        );
+    }
+
+    @Test
+    public void testProcessDirThrowsWhenDirIsFile() {
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> InputDirectoryProcessor.processDir("../input/queries/capybara1.sql")
+        );
+    }
+
+
+    @Test
+    public void testProcessDirFilesValidity() {
+        try {
+            List<Path> paths = InputDirectoryProcessor.processDir("../input/queries/");
+
+            assert !paths.isEmpty();
+            assertTrue(paths.stream().allMatch(p -> {
+                File file = p.toFile();
+                return file.exists() && file.getName().endsWith(".sql");
+            }));
+
+        } catch (IllegalArgumentException exception) {
+            fail("Unexpected throw: " + exception.getMessage());
+        }
+    }
+
+    @Test
+    public void testProcessDirFilesOrdering() {
+        try {
+            List<Path> paths = InputDirectoryProcessor.processDir("../input/queries/");
+            checkOrder(paths);
+        } catch (IllegalArgumentException exception) {
+            fail("Unexpected throw: " + exception.getMessage());
+        }
+    }
+
 
     private void checkOrder(List<Path> orderedSqlPaths) {
         var orderList = orderedSqlPaths.stream()
@@ -37,12 +78,4 @@ public class InputDirectoryProcessorTest {
         }
     }
 
-    @Test
-    @DisplayName("Test readOrder()")
-    public void testReadOrder() {
-        AtomicInteger order = new AtomicInteger(-1);
-        assertDoesNotThrow(() -> order.set(InputDirectoryProcessor.readOrder(Path.of("../input/queries/q1.order"))));
-        System.out.printf("Order: %d\n", order.get());
-        assertEquals(1, order.get());
-    }
 }
