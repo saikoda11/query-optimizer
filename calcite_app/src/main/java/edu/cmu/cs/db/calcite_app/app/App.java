@@ -63,27 +63,38 @@ public class App
 
         // Feel free to modify this to take as many or as few arguments as you want.
         System.out.println("Running the app!");
-        String arg1 = args[0];
-        System.out.println("\tArg1: " + arg1);
-        String arg2 = args[1];
-        System.out.println("\tArg2: " + arg2);
-        String arg3 = args[2];
-        System.out.println("\tArg3: " + arg3);
+        String outputDir = args[0];
+        System.out.println("\toutputDir: " + outputDir);
+        String queriesDir = args[1];
+        System.out.println("\tqueriesDir: " + queriesDir);
+        String dbFile = args[2];
+        System.out.println("\tdbFile: " + dbFile);
+        boolean isTest = Boolean.parseBoolean(args[3]);
+        System.out.println("\tisTest: " + isTest);
 
-        CalciteSchema calciteSchema = createSchema(arg3);
+        CalciteSchema calciteSchema = createSchema(dbFile);
         CalciteFacade calciteFacade = new CalciteFacade(calciteSchema);
 
-        List<Path> orderedSqlPaths = InputDirectoryProcessor.processDir(arg2);
+        List<Path> orderedSqlPaths = InputDirectoryProcessor.processDir(queriesDir);
         for (Path path : orderedSqlPaths) {
             System.out.printf("FILE: %s\n", path);
             String sql = "";
             try {
                 sql = InputDirectoryProcessor.readSql(path);
-                SqlNode sqlNode = calciteFacade.validate(sql);
+                SqlNode sqlNode = calciteFacade.parse(sql);
+                sqlNode = calciteFacade.validate(sqlNode);
+                RelNode relNode = calciteFacade.sql2rel(sqlNode);
+                System.out.println(
+                        RelOptUtil.dumpPlan("", relNode, SqlExplainFormat.TEXT, SqlExplainLevel.ALL_ATTRIBUTES)
+                );
             } catch (IOException e) {
                 System.out.printf("IOException: %s\n", e.getMessage());
             } catch (SqlParseException e) {
                 System.out.printf("ParseException: %s\nSQL: %s\n", e.getMessage(), SqlFormatter.format(sql));
+            }
+
+            if (isTest) {
+                break;
             }
         }
 
