@@ -1,18 +1,20 @@
 package edu.cmu.cs.db.calcite_app.app;
 
-import org.apache.calcite.jdbc.JavaTypeFactoryImpl;
+import org.apache.calcite.DataContext;
+import org.apache.calcite.linq4j.Enumerable;
 import org.apache.calcite.rel.type.*;
+import org.apache.calcite.schema.ScannableTable;
 import org.apache.calcite.schema.Statistic;
-import org.apache.calcite.schema.Table;
 import org.apache.calcite.schema.impl.AbstractTable;
 import org.apache.calcite.sql.type.SqlTypeName;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 import javax.sql.DataSource;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public class CustomTable extends AbstractTable {
+public class CustomTable extends AbstractTable implements ScannableTable {
     private final String tableName;
     private final List<String> fieldNames;
     private final List<SqlTypeName> fieldTypes;
@@ -86,5 +88,10 @@ public class CustomTable extends AbstractTable {
     @Override
     public Statistic getStatistic() {
         return statistic;
+    }
+
+    @Override
+    public Enumerable<@Nullable Object[]> scan(DataContext root) {
+        throw new UnsupportedOperationException();
     }
 }

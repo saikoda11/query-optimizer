@@ -87,11 +87,10 @@ public class App
                         RelOptUtil.dumpPlan("", relNode, SqlExplainFormat.TEXT, SqlExplainLevel.ALL_ATTRIBUTES)
                 );
 
-//                Optimizer optimizer = new Optimizer();
-//                relNode = optimizer.optimize(relNode);
-//                System.out.println(
-//                        RelOptUtil.dumpPlan("", relNode, SqlExplainFormat.TEXT, SqlExplainLevel.ALL_ATTRIBUTES)
-//                );
+                relNode = calciteFacade.optimize(relNode);
+                System.out.println(
+                        RelOptUtil.dumpPlan("", relNode, SqlExplainFormat.TEXT, SqlExplainLevel.ALL_ATTRIBUTES)
+                );
             } catch (IOException e) {
                 System.out.printf("IOException: %s\n", e.getMessage());
             } catch (SqlParseException e) {

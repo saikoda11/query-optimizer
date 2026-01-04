@@ -1,5 +1,6 @@
 package edu.cmu.cs.db.calcite_app.app;
 
+import org.apache.calcite.adapter.enumerable.EnumerableConvention;
 import org.apache.calcite.adapter.enumerable.EnumerableRules;
 import org.apache.calcite.config.CalciteConnectionConfig;
 import org.apache.calcite.jdbc.CalciteSchema;
@@ -20,6 +21,8 @@ import org.apache.calcite.sql.validate.SqlValidator;
 import org.apache.calcite.sql.validate.SqlValidatorUtil;
 import org.apache.calcite.sql2rel.SqlToRelConverter;
 import org.apache.calcite.sql2rel.StandardConvertletTable;
+import org.apache.calcite.tools.Program;
+import org.apache.calcite.tools.Programs;
 import org.apache.calcite.tools.RuleSet;
 import org.apache.calcite.tools.RuleSets;
 
@@ -45,19 +48,6 @@ public class CalciteFacade {
         );
 
         planner.addRelTraitDef(ConventionTraitDef.INSTANCE);
-
-        RuleSet rules = RuleSets.ofList(
-                CoreRules.FILTER_TO_CALC,
-                CoreRules.PROJECT_TO_CALC,
-                CoreRules.FILTER_CALC_MERGE,
-                CoreRules.PROJECT_CALC_MERGE,
-                EnumerableRules.ENUMERABLE_TABLE_SCAN_RULE,
-                EnumerableRules.ENUMERABLE_PROJECT_RULE,
-                EnumerableRules.ENUMERABLE_FILTER_RULE,
-                EnumerableRules.ENUMERABLE_CALC_RULE,
-                EnumerableRules.ENUMERABLE_AGGREGATE_RULE
-        );
-        rules.forEach(planner::addRule);
 
         cluster = RelOptCluster.create(
                 planner,
@@ -94,9 +84,9 @@ public class CalciteFacade {
         SqlToRelConverter.Config converterConfig = SqlToRelConverter.config()
                 .withTrimUnusedFields(true)
                 .withExpand(false);
-//        RelOptTable.ViewExpander NOOP_EXPANDER = (type, query, schema, path) -> null;
+        RelOptTable.ViewExpander NOOP_EXPANDER = (type, query, schema, path) -> null;
         return new SqlToRelConverter(
-                null,
+                NOOP_EXPANDER,
                 validator,
                 customSchema.getCatalogReader(),
                 cluster,
@@ -121,7 +111,25 @@ public class CalciteFacade {
     }
 
     public RelNode optimize(RelNode relNode) {
-        planner.setRoot(relNode);
-        return planner.findBestExp();
+        RuleSet rules = RuleSets.ofList(
+                CoreRules.FILTER_TO_CALC,
+                CoreRules.PROJECT_TO_CALC,
+                CoreRules.FILTER_CALC_MERGE,
+                CoreRules.PROJECT_CALC_MERGE,
+                EnumerableRules.ENUMERABLE_TABLE_SCAN_RULE,
+                EnumerableRules.ENUMERABLE_PROJECT_RULE,
+                EnumerableRules.ENUMERABLE_FILTER_RULE,
+                EnumerableRules.ENUMERABLE_CALC_RULE,
+                EnumerableRules.ENUMERABLE_AGGREGATE_RULE
+        );
+        Program program = Programs.of(RuleSets.ofList(rules));
+
+        return program.run(
+                planner,
+                relNode,
+                relNode.getTraitSet().plus(EnumerableConvention.INSTANCE),
+                Collections.emptyList(),
+                Collections.emptyList()
+        );
     }
 }
