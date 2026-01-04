@@ -12,6 +12,8 @@ import org.apache.calcite.schema.Table;
 import org.apache.calcite.schema.impl.AbstractSchema;
 
 import javax.sql.DataSource;
+import java.nio.file.Path;
+import java.sql.SQLException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -25,10 +27,13 @@ public class CustomSchema extends AbstractSchema {
     @Getter
     private final Prepare.CatalogReader catalogReader;
 
-    public static CustomSchema create(String duckDbFIlePath) {
+    public static CustomSchema create(String duckDbFIlePath) throws SQLException {
         Map<String, Table> tableMap = new HashMap<>();
 
         CalciteSchema rootSchema = CalciteSchema.createRootSchema(false, false);
+        if (!Path.of(duckDbFIlePath).toFile().exists()) {
+            throw new SQLException("Non existent db file");
+        }
         DataSource datasource = JdbcSchema.dataSource(
                 "jdbc:duckdb:" + duckDbFIlePath, "org.duckdb.DuckDBDriver", null, null);
         Schema jdbcSchema = JdbcSchema.create(rootSchema.plus(), "qop1", datasource, null, null);

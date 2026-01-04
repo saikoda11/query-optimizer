@@ -1,5 +1,6 @@
 package edu.cmu.cs.db.calcite_app.app;
 
+import lombok.Getter;
 import org.apache.calcite.DataContext;
 import org.apache.calcite.linq4j.Enumerable;
 import org.apache.calcite.rel.type.*;
@@ -15,14 +16,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class CustomTable extends AbstractTable implements ScannableTable {
+    @Getter
     private final String tableName;
+    @Getter
     private final List<String> fieldNames;
+    @Getter
     private final List<SqlTypeName> fieldTypes;
     private final CustomTableStatistic statistic;
 
     private RelDataType rowType;
 
-    public static CustomTable create(String tableName, DataSource dataSource) {
+    public static CustomTable create(String tableName, DataSource dataSource) throws SQLException {
         try (Connection conn = dataSource.getConnection()) {
             DatabaseMetaData metaData = conn.getMetaData();
             ResultSet columns = metaData.getColumns(null, null, tableName, null);
@@ -51,8 +55,6 @@ public class CustomTable extends AbstractTable implements ScannableTable {
                     fieldTypes,
                     new CustomTableStatistic(rowCount)
             );
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
         }
     }
 

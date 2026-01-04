@@ -67,7 +67,13 @@ public class App
         boolean isTest = Boolean.parseBoolean(args[3]);
         System.out.println("\tisTest: " + isTest);
 
-        CalciteFacade calciteFacade = new CalciteFacade(dbFile);
+        CalciteFacade calciteFacade = null;
+        try {
+            calciteFacade = new CalciteFacade(dbFile);
+        } catch (SQLException e) {
+            System.out.println("Could not open db file: " + dbFile);
+            return;
+        }
 
         List<Path> orderedSqlPaths;
         if (isTest) {

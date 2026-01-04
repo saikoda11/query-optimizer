@@ -26,6 +26,7 @@ import org.apache.calcite.tools.Programs;
 import org.apache.calcite.tools.RuleSet;
 import org.apache.calcite.tools.RuleSets;
 
+import java.sql.SQLException;
 import java.util.Collections;
 
 public class CalciteFacade {
@@ -38,7 +39,7 @@ public class CalciteFacade {
     private final VolcanoPlanner planner;
     private final RelOptCluster cluster;
 
-    public CalciteFacade(String duckDbFilePath) {
+    public CalciteFacade(String duckDbFilePath) throws SQLException {
         customSchema = CustomSchema.create(duckDbFilePath);
         this.validator = createValidator();
 
