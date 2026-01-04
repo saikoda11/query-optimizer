@@ -93,21 +93,19 @@ public class App
             String sql = "";
             try {
                 sql = InputDirectoryProcessor.readSql(path);
-                SerializeSql(sql, new File(filename + ".sql"));
+                SerializeSql(sql, new File(outputDir + "/" + filename + ".sql"));
 
                 SqlNode sqlNode = calciteFacade.parse(sql);
                 sqlNode = calciteFacade.validate(sqlNode);
                 RelNode relNode = calciteFacade.sql2rel(sqlNode);
-                SerializePlan(relNode, new File(filename + ".txt"));
+                SerializePlan(relNode, new File(outputDir + "/" + filename + ".txt"));
 
                 relNode = calciteFacade.optimize(relNode);
-                SerializePlan(relNode, new File(filename + "_optimized.txt"));
+                SerializePlan(relNode, new File(outputDir + "/" + filename + "_optimized.txt"));
 
                 SqlString optimizedSqlString = calciteFacade.rel2SqlString(relNode);
                 String optimizeSql = optimizedSqlString.toString();
-                SerializeSql(optimizeSql, new File(filename + "_optimized.sql"));
-
-
+                SerializeSql(optimizeSql, new File(outputDir + "/" + filename + "_optimized.sql"));
             } catch (IOException e) {
                 System.out.printf("IOException: %s\n", e.getMessage());
             } catch (SqlParseException e) {
