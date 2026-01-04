@@ -7,6 +7,8 @@ import org.apache.calcite.schema.Table;
 import org.apache.calcite.schema.impl.AbstractTable;
 import org.apache.calcite.sql.type.SqlTypeName;
 
+import javax.sql.DataSource;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -18,7 +20,41 @@ public class CustomTable extends AbstractTable {
 
     private RelDataType rowType;
 
-    public CustomTable(
+    public static CustomTable create(String tableName, DataSource dataSource) {
+        try (Connection conn = dataSource.getConnection()) {
+            DatabaseMetaData metaData = conn.getMetaData();
+            ResultSet columns = metaData.getColumns(null, null, tableName, null);
+
+            List<String> fieldNames = new ArrayList<>();
+            List<SqlTypeName> fieldTypes = new ArrayList<>();
+            while (columns.next()) {
+                String columnName = columns.getString("COLUMN_NAME");
+                int jdbcDataType = columns.getInt("DATA_TYPE");
+                fieldNames.add(columnName);
+                fieldTypes.add(SqlTypeName.getNameForJdbcType(jdbcDataType));
+            }
+            columns.close();
+
+            PreparedStatement countStmt = conn.prepareStatement("SELECT count(*) as row_count FROM " + tableName);
+            ResultSet rsCount = countStmt.executeQuery();
+            int rowCount = -1;
+            if (rsCount.next()) {
+                rowCount = rsCount.getInt("row_count");
+            }
+            rsCount.close();
+
+            return new CustomTable(
+                    tableName,
+                    fieldNames,
+                    fieldTypes,
+                    new CustomTableStatistic(rowCount)
+            );
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private CustomTable(
             String tableName,
             List<String> fieldNames,
             List<SqlTypeName> fieldTypes,
