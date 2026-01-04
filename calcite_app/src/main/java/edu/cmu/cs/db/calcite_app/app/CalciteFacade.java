@@ -2,7 +2,9 @@ package edu.cmu.cs.db.calcite_app.app;
 
 import org.apache.calcite.adapter.enumerable.EnumerableConvention;
 import org.apache.calcite.adapter.enumerable.EnumerableRules;
+import org.apache.calcite.adapter.jdbc.JdbcSchema;
 import org.apache.calcite.config.CalciteConnectionConfig;
+import org.apache.calcite.jdbc.CalciteConnection;
 import org.apache.calcite.jdbc.CalciteSchema;
 import org.apache.calcite.plan.*;
 import org.apache.calcite.plan.volcano.VolcanoPlanner;
@@ -10,24 +12,28 @@ import org.apache.calcite.prepare.CalciteCatalogReader;
 import org.apache.calcite.prepare.Prepare;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rel.RelRoot;
+import org.apache.calcite.rel.rel2sql.RelToSqlConverter;
 import org.apache.calcite.rel.rules.CoreRules;
 import org.apache.calcite.rel.type.RelDataTypeFactory;
 import org.apache.calcite.rex.RexBuilder;
+import org.apache.calcite.schema.SchemaPlus;
 import org.apache.calcite.sql.SqlNode;
+import org.apache.calcite.sql.dialect.PostgresqlSqlDialect;
 import org.apache.calcite.sql.fun.SqlStdOperatorTable;
 import org.apache.calcite.sql.parser.SqlParseException;
 import org.apache.calcite.sql.parser.SqlParser;
+import org.apache.calcite.sql.util.SqlString;
 import org.apache.calcite.sql.validate.SqlValidator;
 import org.apache.calcite.sql.validate.SqlValidatorUtil;
 import org.apache.calcite.sql2rel.SqlToRelConverter;
 import org.apache.calcite.sql2rel.StandardConvertletTable;
-import org.apache.calcite.tools.Program;
-import org.apache.calcite.tools.Programs;
-import org.apache.calcite.tools.RuleSet;
-import org.apache.calcite.tools.RuleSets;
+import org.apache.calcite.tools.*;
 
-import java.sql.SQLException;
+import javax.sql.DataSource;
+import java.sql.*;
 import java.util.Collections;
+import java.util.Properties;
+import java.util.function.Consumer;
 
 public class CalciteFacade {
     private final CalciteConnectionConfig config = CalciteConfig.getCalciteConnectionConfig();
@@ -38,8 +44,13 @@ public class CalciteFacade {
     private final SqlToRelConverter converter;
     private final VolcanoPlanner planner;
     private final RelOptCluster cluster;
+    private final DataSource dataSource;
+    private final String duckDbFilePath;
 
     public CalciteFacade(String duckDbFilePath) throws SQLException {
+        this.duckDbFilePath = duckDbFilePath;
+        dataSource = JdbcSchema.dataSource(
+                "jdbc:calcite:" + duckDbFilePath, "org.duckdb.DuckDBDriver", null, null);
         customSchema = CustomSchema.create(duckDbFilePath);
         this.validator = createValidator();
 
@@ -55,8 +66,7 @@ public class CalciteFacade {
                 new RexBuilder(typeFactory)
         );
 
-
-        converter = createConverter(cluster);
+        converter = createConverter();
     }
 
     private SqlValidator createValidator() {
@@ -81,7 +91,7 @@ public class CalciteFacade {
         );
     }
 
-    private SqlToRelConverter createConverter(RelOptCluster cluster) {
+    private SqlToRelConverter createConverter() {
         SqlToRelConverter.Config converterConfig = SqlToRelConverter.config()
                 .withTrimUnusedFields(true)
                 .withExpand(false);
@@ -109,6 +119,13 @@ public class CalciteFacade {
     public RelNode sql2rel(SqlNode sqlNode) {
         RelRoot root = converter.convertQuery(sqlNode, false, true);
         return root.rel;
+    }
+
+    public SqlString rel2SqlString(RelNode relNode) {
+        RelToSqlConverter rel2sql = new RelToSqlConverter(PostgresqlSqlDialect.DEFAULT);
+        RelToSqlConverter.Result res = rel2sql.visitRoot(relNode);
+        SqlNode optimizedSqlNode = res.asQueryOrValues();
+        return optimizedSqlNode.toSqlString(PostgresqlSqlDialect.DEFAULT);
     }
 
     public RelNode optimize(RelNode relNode) {

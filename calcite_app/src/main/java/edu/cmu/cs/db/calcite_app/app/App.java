@@ -14,9 +14,14 @@ import org.apache.calcite.sql.SqlExplainFormat;
 import org.apache.calcite.sql.SqlExplainLevel;
 import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.parser.SqlParseException;
+import org.apache.calcite.sql.util.SqlString;
 
 public class App
 {
+    private static void SerializeSql(String sql, File outputPath) throws IOException {
+        Files.writeString(outputPath.toPath(), sql);
+    }
+
     private static void SerializePlan(RelNode relNode, File outputPath) throws IOException {
         Files.writeString(outputPath.toPath(), RelOptUtil.dumpPlan("", relNode, SqlExplainFormat.TEXT, SqlExplainLevel.ALL_ATTRIBUTES));
     }
@@ -57,14 +62,14 @@ public class App
         }
 
         // Feel free to modify this to take as many or as few arguments as you want.
-        System.out.println("Running the app!");
         String outputDir = args[0];
-        System.out.println("\toutputDir: " + outputDir);
         String queriesDir = args[1];
-        System.out.println("\tqueriesDir: " + queriesDir);
         String dbFile = args[2];
-        System.out.println("\tdbFile: " + dbFile);
         boolean isTest = Boolean.parseBoolean(args[3]);
+        System.out.println("Running the app!");
+        System.out.println("\toutputDir: " + outputDir);
+        System.out.println("\tqueriesDir: " + queriesDir);
+        System.out.println("\tdbFile: " + dbFile);
         System.out.println("\tisTest: " + isTest);
 
         CalciteFacade calciteFacade = null;
@@ -82,21 +87,27 @@ public class App
             orderedSqlPaths = InputDirectoryProcessor.processDir(queriesDir);
         }
         for (Path path : orderedSqlPaths) {
+            String filename = getFileNameWithoutExtension(path.toFile());
             System.out.printf("FILE: %s\n", path);
+            System.out.printf("filename without extension: %s\n", filename);
             String sql = "";
             try {
                 sql = InputDirectoryProcessor.readSql(path);
+                SerializeSql(sql, new File(filename + ".sql"));
+
                 SqlNode sqlNode = calciteFacade.parse(sql);
                 sqlNode = calciteFacade.validate(sqlNode);
                 RelNode relNode = calciteFacade.sql2rel(sqlNode);
-                System.out.println(
-                        RelOptUtil.dumpPlan("", relNode, SqlExplainFormat.TEXT, SqlExplainLevel.ALL_ATTRIBUTES)
-                );
+                SerializePlan(relNode, new File(filename + ".txt"));
 
                 relNode = calciteFacade.optimize(relNode);
-                System.out.println(
-                        RelOptUtil.dumpPlan("", relNode, SqlExplainFormat.TEXT, SqlExplainLevel.ALL_ATTRIBUTES)
-                );
+                SerializePlan(relNode, new File(filename + "_optimized.txt"));
+
+                SqlString optimizedSqlString = calciteFacade.rel2SqlString(relNode);
+                String optimizeSql = optimizedSqlString.toString();
+                SerializeSql(optimizeSql, new File(filename + "_optimized.sql"));
+
+
             } catch (IOException e) {
                 System.out.printf("IOException: %s\n", e.getMessage());
             } catch (SqlParseException e) {
@@ -104,5 +115,10 @@ public class App
             }
 
         }
+    }
+
+    private static String getFileNameWithoutExtension(File file) {
+        String filename = file.getName();
+        return filename.substring(0, filename.lastIndexOf("."));
     }
 }
