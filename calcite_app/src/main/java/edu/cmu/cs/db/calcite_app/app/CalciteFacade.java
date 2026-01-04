@@ -1,5 +1,6 @@
 package edu.cmu.cs.db.calcite_app.app;
 
+import org.apache.calcite.adapter.enumerable.EnumerableRules;
 import org.apache.calcite.config.CalciteConnectionConfig;
 import org.apache.calcite.jdbc.CalciteSchema;
 import org.apache.calcite.plan.*;
@@ -8,6 +9,7 @@ import org.apache.calcite.prepare.CalciteCatalogReader;
 import org.apache.calcite.prepare.Prepare;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rel.RelRoot;
+import org.apache.calcite.rel.rules.CoreRules;
 import org.apache.calcite.rel.type.RelDataTypeFactory;
 import org.apache.calcite.rex.RexBuilder;
 import org.apache.calcite.sql.SqlNode;
@@ -18,33 +20,52 @@ import org.apache.calcite.sql.validate.SqlValidator;
 import org.apache.calcite.sql.validate.SqlValidatorUtil;
 import org.apache.calcite.sql2rel.SqlToRelConverter;
 import org.apache.calcite.sql2rel.StandardConvertletTable;
+import org.apache.calcite.tools.RuleSet;
+import org.apache.calcite.tools.RuleSets;
 
 import java.util.Collections;
 
 public class CalciteFacade {
     private final CalciteConnectionConfig config = CalciteConfig.getCalciteConnectionConfig();
-    private final SqlValidator validator;
-    private final SqlToRelConverter sqlToRelConverter;
     private final RelDataTypeFactory typeFactory = CustomSchema.getTypeFactory();
     private final CustomSchema customSchema;
+
+    private final SqlValidator validator;
+    private final SqlToRelConverter converter;
+    private final VolcanoPlanner planner;
+    private final RelOptCluster cluster;
 
     public CalciteFacade(String duckDbFilePath) {
         customSchema = CustomSchema.create(duckDbFilePath);
         this.validator = createValidator();
 
-        VolcanoPlanner planner = new VolcanoPlanner(
+        planner = new VolcanoPlanner(
                 RelOptCostImpl.FACTORY,
                 Contexts.of(config)
         );
 
         planner.addRelTraitDef(ConventionTraitDef.INSTANCE);
 
-        RelOptCluster cluster = RelOptCluster.create(
+        RuleSet rules = RuleSets.ofList(
+                CoreRules.FILTER_TO_CALC,
+                CoreRules.PROJECT_TO_CALC,
+                CoreRules.FILTER_CALC_MERGE,
+                CoreRules.PROJECT_CALC_MERGE,
+                EnumerableRules.ENUMERABLE_TABLE_SCAN_RULE,
+                EnumerableRules.ENUMERABLE_PROJECT_RULE,
+                EnumerableRules.ENUMERABLE_FILTER_RULE,
+                EnumerableRules.ENUMERABLE_CALC_RULE,
+                EnumerableRules.ENUMERABLE_AGGREGATE_RULE
+        );
+        rules.forEach(planner::addRule);
+
+        cluster = RelOptCluster.create(
                 planner,
                 new RexBuilder(typeFactory)
         );
 
-        sqlToRelConverter = createConverter(cluster);
+
+        converter = createConverter(cluster);
     }
 
     private SqlValidator createValidator() {
@@ -95,7 +116,12 @@ public class CalciteFacade {
     }
 
     public RelNode sql2rel(SqlNode sqlNode) {
-        RelRoot root = sqlToRelConverter.convertQuery(sqlNode, false, true);
+        RelRoot root = converter.convertQuery(sqlNode, false, true);
         return root.rel;
+    }
+
+    public RelNode optimize(RelNode relNode) {
+        planner.setRoot(relNode);
+        return planner.findBestExp();
     }
 }
