@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.fail;
 
 public class CustomTableTest {
-    private static final String duckDbFIle = "/Users/sayat/IdeaProjects/15799-s25-project1/input/qop1.db";
+    private static final String duckDbFIle = "../input/qop1.db";
     private static DataSource dataSource;
 
     @BeforeAll
