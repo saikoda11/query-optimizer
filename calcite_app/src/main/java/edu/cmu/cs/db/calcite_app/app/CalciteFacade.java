@@ -2,7 +2,6 @@ package edu.cmu.cs.db.calcite_app.app;
 
 import org.apache.calcite.config.CalciteConnectionConfig;
 import org.apache.calcite.jdbc.CalciteSchema;
-import org.apache.calcite.jdbc.JavaTypeFactoryImpl;
 import org.apache.calcite.plan.*;
 import org.apache.calcite.plan.volcano.VolcanoPlanner;
 import org.apache.calcite.prepare.CalciteCatalogReader;
@@ -19,7 +18,6 @@ import org.apache.calcite.sql.validate.SqlValidator;
 import org.apache.calcite.sql.validate.SqlValidatorUtil;
 import org.apache.calcite.sql2rel.SqlToRelConverter;
 import org.apache.calcite.sql2rel.StandardConvertletTable;
-import org.apache.calcite.util.SourceStringReader;
 
 import java.util.Collections;
 
@@ -27,7 +25,6 @@ public class CalciteFacade {
     private final CalciteConnectionConfig config = CalciteConfig.getCalciteConnectionConfig();
     private final SqlValidator validator;
     private final SqlToRelConverter sqlToRelConverter;
-    private final Optimizer optimizer = new Optimizer();
     private final RelDataTypeFactory typeFactory = CustomSchema.getTypeFactory();
     private final CustomSchema customSchema;
 
