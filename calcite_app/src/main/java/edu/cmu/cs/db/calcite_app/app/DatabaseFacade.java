@@ -10,6 +10,7 @@ import org.apache.calcite.util.Pair;
 import javax.sql.DataSource;
 import java.sql.*;
 import java.util.*;
+import java.util.function.Consumer;
 
 public class DatabaseFacade {
     private static DatabaseFacade instance;
@@ -94,5 +95,14 @@ public class DatabaseFacade {
         CalciteSchema rootSchema = CalciteSchema.createRootSchema(false, false);
         Schema jdbcSchema = JdbcSchema.create(rootSchema.plus(), "qop1", dataSource, null, null);
         return jdbcSchema.getTableNames();
+    }
+
+    public void execute(String sql, Consumer<ResultSet> serializer) throws SQLException {
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql);
+             ResultSet resultSet = pstmt.executeQuery();
+        ) {
+            serializer.accept(resultSet);
+        }
     }
 }

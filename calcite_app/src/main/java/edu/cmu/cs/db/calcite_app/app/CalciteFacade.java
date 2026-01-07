@@ -10,6 +10,7 @@ import org.apache.calcite.prepare.CalciteCatalogReader;
 import org.apache.calcite.prepare.Prepare;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rel.RelRoot;
+import org.apache.calcite.rel.metadata.DefaultRelMetadataProvider;
 import org.apache.calcite.rel.rel2sql.RelToSqlConverter;
 import org.apache.calcite.rel.rules.CoreRules;
 import org.apache.calcite.rel.type.RelDataTypeFactory;
@@ -31,7 +32,7 @@ import java.util.Collections;
 import java.util.function.Consumer;
 
 public class CalciteFacade {
-    private final CalciteConnectionConfig config = CalciteConfig.getCalciteConnectionConfig();
+    private final CalciteConnectionConfig config = AppUtils.getCalciteConnectionConfig();
     private final RelDataTypeFactory typeFactory = CustomSchema.getTypeFactory();
     private final CustomSchema customSchema;
 
@@ -69,7 +70,7 @@ public class CalciteFacade {
                 config);
 
 
-        SqlValidator.Config sqlValidatorConfig = CalciteConfig.getSqlValidatorConfig();
+        SqlValidator.Config sqlValidatorConfig = AppUtils.getSqlValidatorConfig();
         return SqlValidatorUtil.newValidator(
                 SqlStdOperatorTable.instance(),
                 catalogReader,
@@ -94,7 +95,7 @@ public class CalciteFacade {
     }
 
     public SqlNode parse(String sql) throws SqlParseException {
-        SqlParser.Config sqlParserConfig = CalciteConfig.getSqlParserConfig();
+        SqlParser.Config sqlParserConfig = AppUtils.getSqlParserConfig();
         SqlParser sqlParser = SqlParser.create(sql, sqlParserConfig);
         return sqlParser.parseQuery();
     }
@@ -129,6 +130,7 @@ public class CalciteFacade {
         );
         Program program = Programs.of(RuleSets.ofList(rules));
 
+        cluster.setMetadataProvider(DefaultRelMetadataProvider.INSTANCE);
         return program.run(
                 planner,
                 relNode,
@@ -138,13 +140,7 @@ public class CalciteFacade {
         );
     }
 
-    public void execute(RelNode relNode, Consumer<ResultSet> serialize) throws SQLException, ClassNotFoundException {
-        Class.forName("org.apache.calcite.jdbc.Driver");
-        try (
-                PreparedStatement statement =  RelRunners.run(relNode);
-                ResultSet resultSet = statement.executeQuery()
-                ) {
-            serialize.accept(resultSet);
-        }
+    public void execute(String sql, Consumer<ResultSet> serializer) throws SQLException, ClassNotFoundException {
+        DatabaseFacade.getInstance().execute(sql, serializer);
     }
 }

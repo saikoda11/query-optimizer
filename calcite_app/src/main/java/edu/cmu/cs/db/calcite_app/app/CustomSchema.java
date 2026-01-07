@@ -40,7 +40,7 @@ public class CustomSchema extends AbstractSchema {
                 rootSchema,
                 Collections.singletonList(schemaName),
                 typeFactory,
-                CalciteConfig.getCalciteConnectionConfig());
+                AppUtils.getCalciteConnectionConfig());
         rootSchema.add(schemaName, this);
     }
 
