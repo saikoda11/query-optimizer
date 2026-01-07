@@ -8,6 +8,7 @@ import java.util.Collections;
 import java.util.List;
 
 import com.github.vertical_blank.sqlformatter.SqlFormatter;
+import org.apache.calcite.adapter.jdbc.JdbcSchema;
 import org.apache.calcite.plan.RelOptUtil;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.sql.SqlExplainFormat;
@@ -15,6 +16,9 @@ import org.apache.calcite.sql.SqlExplainLevel;
 import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.parser.SqlParseException;
 import org.apache.calcite.sql.util.SqlString;
+
+import javax.sql.DataSource;
+import javax.xml.crypto.Data;
 
 public class App
 {
@@ -71,6 +75,10 @@ public class App
         System.out.println("\tqueriesDir: " + queriesDir);
         System.out.println("\tdbFile: " + dbFile);
         System.out.println("\tisTest: " + isTest);
+
+        DataSource datasource = JdbcSchema.dataSource(
+                "jdbc:duckdb:" + dbFile, "org.duckdb.DuckDBDriver", null, null);
+        DatabaseFacade.init(datasource);
 
         CalciteFacade calciteFacade = null;
         try {

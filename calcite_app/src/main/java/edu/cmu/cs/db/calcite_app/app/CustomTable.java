@@ -2,15 +2,16 @@ package edu.cmu.cs.db.calcite_app.app;
 
 import lombok.Getter;
 import org.apache.calcite.DataContext;
+import org.apache.calcite.jdbc.JavaTypeFactoryImpl;
 import org.apache.calcite.linq4j.Enumerable;
 import org.apache.calcite.rel.type.*;
 import org.apache.calcite.schema.ScannableTable;
 import org.apache.calcite.schema.Statistic;
 import org.apache.calcite.schema.impl.AbstractTable;
 import org.apache.calcite.sql.type.SqlTypeName;
+import org.apache.calcite.util.Pair;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
-import javax.sql.DataSource;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -26,36 +27,15 @@ public class CustomTable extends AbstractTable implements ScannableTable {
 
     private RelDataType rowType;
 
-    public static CustomTable create(String tableName, DataSource dataSource) throws SQLException {
-        try (Connection conn = dataSource.getConnection()) {
-            DatabaseMetaData metaData = conn.getMetaData();
-            ResultSet columns = metaData.getColumns(null, null, tableName, null);
-
-            List<String> fieldNames = new ArrayList<>();
-            List<SqlTypeName> fieldTypes = new ArrayList<>();
-            while (columns.next()) {
-                String columnName = columns.getString("COLUMN_NAME");
-                int jdbcDataType = columns.getInt("DATA_TYPE");
-                fieldNames.add(columnName);
-                fieldTypes.add(SqlTypeName.getNameForJdbcType(jdbcDataType));
-            }
-            columns.close();
-
-            PreparedStatement countStmt = conn.prepareStatement("SELECT count(*) as row_count FROM " + tableName);
-            ResultSet rsCount = countStmt.executeQuery();
-            int rowCount = -1;
-            if (rsCount.next()) {
-                rowCount = rsCount.getInt("row_count");
-            }
-            rsCount.close();
-
-            return new CustomTable(
-                    tableName,
-                    fieldNames,
-                    fieldTypes,
-                    new CustomTableStatistic(rowCount)
-            );
-        }
+    public static CustomTable create(String tableName) throws SQLException {
+        Pair<List<String>, List<SqlTypeName>> fieldNamesAndTypes = DatabaseFacade.getInstance().getFieldNamesAndTypes(tableName);
+        int rowCount = DatabaseFacade.getInstance().getRowCount(tableName);
+        return new CustomTable(
+                tableName,
+                fieldNamesAndTypes.getKey(),
+                fieldNamesAndTypes.getValue(),
+                new CustomTableStatistic(rowCount)
+        );
     }
 
     private CustomTable(
@@ -94,6 +74,7 @@ public class CustomTable extends AbstractTable implements ScannableTable {
 
     @Override
     public Enumerable<@Nullable Object[]> scan(DataContext root) {
-        throw new UnsupportedOperationException();
+        List<RelDataTypeField> fields = this.getRowType(new JavaTypeFactoryImpl()).getFieldList();
+        return new CustomEnumerable(tableName, fields);
     }
 }

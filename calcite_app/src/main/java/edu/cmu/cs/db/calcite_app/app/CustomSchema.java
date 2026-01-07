@@ -39,7 +39,7 @@ public class CustomSchema extends AbstractSchema {
         Schema jdbcSchema = JdbcSchema.create(rootSchema.plus(), "qop1", datasource, null, null);
 
         for (String tableName : jdbcSchema.getTableNames()) {
-            CustomTable customTable = CustomTable.create(tableName, datasource);
+            CustomTable customTable = CustomTable.create(tableName);
             tableMap.put(tableName, customTable);
         }
 

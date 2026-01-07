@@ -2,9 +2,7 @@ package edu.cmu.cs.db.calcite_app.app;
 
 import org.apache.calcite.adapter.enumerable.EnumerableConvention;
 import org.apache.calcite.adapter.enumerable.EnumerableRules;
-import org.apache.calcite.adapter.jdbc.JdbcSchema;
 import org.apache.calcite.config.CalciteConnectionConfig;
-import org.apache.calcite.jdbc.CalciteConnection;
 import org.apache.calcite.jdbc.CalciteSchema;
 import org.apache.calcite.plan.*;
 import org.apache.calcite.plan.volcano.VolcanoPlanner;
@@ -16,7 +14,6 @@ import org.apache.calcite.rel.rel2sql.RelToSqlConverter;
 import org.apache.calcite.rel.rules.CoreRules;
 import org.apache.calcite.rel.type.RelDataTypeFactory;
 import org.apache.calcite.rex.RexBuilder;
-import org.apache.calcite.schema.SchemaPlus;
 import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.dialect.PostgresqlSqlDialect;
 import org.apache.calcite.sql.fun.SqlStdOperatorTable;
@@ -29,10 +26,8 @@ import org.apache.calcite.sql2rel.SqlToRelConverter;
 import org.apache.calcite.sql2rel.StandardConvertletTable;
 import org.apache.calcite.tools.*;
 
-import javax.sql.DataSource;
 import java.sql.*;
 import java.util.Collections;
-import java.util.Properties;
 import java.util.function.Consumer;
 
 public class CalciteFacade {
@@ -44,13 +39,8 @@ public class CalciteFacade {
     private final SqlToRelConverter converter;
     private final VolcanoPlanner planner;
     private final RelOptCluster cluster;
-    private final DataSource dataSource;
-    private final String duckDbFilePath;
 
     public CalciteFacade(String duckDbFilePath) throws SQLException {
-        this.duckDbFilePath = duckDbFilePath;
-        dataSource = JdbcSchema.dataSource(
-                "jdbc:calcite:" + duckDbFilePath, "org.duckdb.DuckDBDriver", null, null);
         customSchema = CustomSchema.create(duckDbFilePath);
         this.validator = createValidator();
 
@@ -78,11 +68,8 @@ public class CalciteFacade {
                 typeFactory,
                 config);
 
-        SqlValidator.Config sqlValidatorConfig = SqlValidator.Config.DEFAULT
-                .withDefaultNullCollation(config.defaultNullCollation())
-                .withConformance(config.conformance())
-                .withIdentifierExpansion(true);
 
+        SqlValidator.Config sqlValidatorConfig = CalciteConfig.getSqlValidatorConfig();
         return SqlValidatorUtil.newValidator(
                 SqlStdOperatorTable.instance(),
                 catalogReader,
@@ -149,5 +136,15 @@ public class CalciteFacade {
                 Collections.emptyList(),
                 Collections.emptyList()
         );
+    }
+
+    public void execute(RelNode relNode, Consumer<ResultSet> serialize) throws SQLException, ClassNotFoundException {
+        Class.forName("org.apache.calcite.jdbc.Driver");
+        try (
+                PreparedStatement statement =  RelRunners.run(relNode);
+                ResultSet resultSet = statement.executeQuery()
+                ) {
+            serialize.accept(resultSet);
+        }
     }
 }
