@@ -18,7 +18,6 @@ import org.apache.calcite.sql.parser.SqlParseException;
 import org.apache.calcite.sql.util.SqlString;
 
 import javax.sql.DataSource;
-import javax.xml.crypto.Data;
 
 public class App
 {

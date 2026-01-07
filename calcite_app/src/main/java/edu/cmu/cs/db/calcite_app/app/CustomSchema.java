@@ -9,7 +9,6 @@ import org.apache.calcite.rel.type.RelDataTypeFactory;
 import org.apache.calcite.schema.Table;
 import org.apache.calcite.schema.impl.AbstractSchema;
 
-import java.nio.file.Path;
 import java.sql.SQLException;
 import java.util.Collections;
 import java.util.HashMap;

@@ -5,7 +5,6 @@ import org.apache.calcite.linq4j.Enumerator;
 import org.apache.calcite.linq4j.Linq4j;
 import org.apache.calcite.rel.type.RelDataTypeField;
 
-import javax.sql.DataSource;
 import java.util.List;
 
 public class CustomEnumerable extends AbstractEnumerable<Object[]> {
