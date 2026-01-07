@@ -76,13 +76,17 @@ public class App
         System.out.println("\tdbFile: " + dbFile);
         System.out.println("\tisTest: " + isTest);
 
+        if (!Path.of(dbFile).toFile().exists()) {
+            System.out.println("DB File not found or does not exist");
+            return;
+        }
         DataSource datasource = JdbcSchema.dataSource(
                 "jdbc:duckdb:" + dbFile, "org.duckdb.DuckDBDriver", null, null);
         DatabaseFacade.init(datasource);
 
         CalciteFacade calciteFacade = null;
         try {
-            calciteFacade = new CalciteFacade(dbFile);
+            calciteFacade = new CalciteFacade();
         } catch (SQLException e) {
             System.out.println("Could not open db file: " + dbFile);
             return;

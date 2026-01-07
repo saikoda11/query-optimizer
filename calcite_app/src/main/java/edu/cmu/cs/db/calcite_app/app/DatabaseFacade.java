@@ -1,6 +1,9 @@
 package edu.cmu.cs.db.calcite_app.app;
 
+import org.apache.calcite.adapter.jdbc.JdbcSchema;
+import org.apache.calcite.jdbc.CalciteSchema;
 import org.apache.calcite.rel.type.RelDataTypeField;
+import org.apache.calcite.schema.Schema;
 import org.apache.calcite.sql.type.SqlTypeName;
 import org.apache.calcite.util.Pair;
 
@@ -85,5 +88,11 @@ public class DatabaseFacade {
             }
             return rowCount;
         }
+    }
+
+    public Set<String> getTableNames() {
+        CalciteSchema rootSchema = CalciteSchema.createRootSchema(false, false);
+        Schema jdbcSchema = JdbcSchema.create(rootSchema.plus(), "qop1", dataSource, null, null);
+        return jdbcSchema.getTableNames();
     }
 }

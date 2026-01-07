@@ -40,8 +40,8 @@ public class CalciteFacade {
     private final VolcanoPlanner planner;
     private final RelOptCluster cluster;
 
-    public CalciteFacade(String duckDbFilePath) throws SQLException {
-        customSchema = CustomSchema.create(duckDbFilePath);
+    public CalciteFacade() throws SQLException {
+        customSchema = CustomSchema.create();
         this.validator = createValidator();
 
         planner = new VolcanoPlanner(
