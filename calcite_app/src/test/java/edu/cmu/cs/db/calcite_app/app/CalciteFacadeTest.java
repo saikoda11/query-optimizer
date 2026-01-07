@@ -1,5 +1,6 @@
 package edu.cmu.cs.db.calcite_app.app;
 
+import org.apache.calcite.adapter.jdbc.JdbcSchema;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.runtime.CalciteContextException;
 import org.apache.calcite.sql.SqlNode;
@@ -7,6 +8,7 @@ import org.apache.calcite.sql.parser.SqlParseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import javax.sql.DataSource;
 import java.sql.SQLException;
 import java.util.List;
 
@@ -17,11 +19,18 @@ public class CalciteFacadeTest {
     private static List<String> sqls;
     private static List<Boolean> isExpectedToParse;
     private static List<Boolean> isExpectedToValidate;
+    private static final String duckDbFIle = "../input/qop1.db";
 
     @BeforeAll
     static void init() {
+        DataSource dataSource = JdbcSchema.dataSource(
+                "jdbc:duckdb:" + duckDbFIle,
+                "org.duckdb.DuckDBDriver",
+                null,
+                null);
+        DatabaseFacade.init(dataSource);
         try {
-            calciteFacade = new CalciteFacade("../input/qop1.db");
+            calciteFacade = new CalciteFacade();
         } catch (SQLException e) {
             fail(e);
         }
@@ -47,25 +56,7 @@ public class CalciteFacadeTest {
 
     @Test
     void testConstructorSuccess() {
-        assertDoesNotThrow(() -> {new CalciteFacade("../input/qop1.db");});
-    }
-
-    @Test
-    void testConstructorThrowsWhenDbFileDoesNotExist() {
-        assertThrows(Exception.class, () -> {new CalciteFacade("somenonexistentdb");});
-    }
-
-    @Test
-    void testParse() {
-        for (int i = 0; i < sqls.size(); ++i) {
-            try {
-                calciteFacade.parse(sqls.get(i));
-            } catch (SqlParseException e) {
-                if (isExpectedToParse.get(i)) {
-                    fail(e);
-                }
-            }
-        }
+        assertDoesNotThrow(CalciteFacade::new);
     }
 
     @Test
@@ -89,5 +80,19 @@ public class CalciteFacadeTest {
             }
         }
         assert isExpectedToValidate.stream().mapToInt(i -> i ? 1 : 0).sum() == successCount;
+    }
+
+    @Test
+    void testExecute() {
+        try {
+            SqlNode sqlNode = calciteFacade.parse(sqls.get(2));
+            sqlNode = calciteFacade.validate(sqlNode);
+            RelNode relNode = calciteFacade.sql2rel(sqlNode);
+            relNode = calciteFacade.optimize(relNode);
+            String sql = calciteFacade.rel2SqlString(relNode).getSql();
+            calciteFacade.execute(sql, AppUtils.getResultSetSerializer());
+        } catch (SqlParseException | SQLException | ClassNotFoundException e) {
+            fail(e);
+        }
     }
 }

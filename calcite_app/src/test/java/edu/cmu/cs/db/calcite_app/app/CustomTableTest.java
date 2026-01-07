@@ -14,22 +14,22 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 public class CustomTableTest {
     private static final String duckDbFIle = "../input/qop1.db";
-    private static DataSource dataSource;
 
     @BeforeAll
     static void init() {
-        dataSource = JdbcSchema.dataSource(
+        DataSource dataSource = JdbcSchema.dataSource(
                 "jdbc:duckdb:" + duckDbFIle,
                 "org.duckdb.DuckDBDriver",
                 null,
                 null);
+        DatabaseFacade.init(dataSource);
     }
 
     @Test
     void testCreateSuccess() {
         CustomTable customTable = null;
         try {
-            customTable = CustomTable.create("lineitem", dataSource);
+            customTable = CustomTable.create("lineitem");
         } catch (SQLException e) {
             fail(e);
         }
@@ -43,7 +43,7 @@ public class CustomTableTest {
     @Test
     void testCreateThrowsWhenRelationDoesNotExist() {
         assertThrows(Exception.class, () -> {
-            CustomTable.create("nonexistentrelation", dataSource);
+            CustomTable.create("nonexistentrelation");
         });
     }
 }
